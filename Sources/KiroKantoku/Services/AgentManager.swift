@@ -561,6 +561,7 @@ public final class AgentManager {
                     guard let self = self, let agent = self.agents[agentId] else { return }
                     agent.status = .error
                     agent.errorMessage = error.localizedDescription
+                    self.clearTransientOperationStatus(for: agent)
                     self.addActivityEvent(ActivityEvent(
                         agentId: agent.id,
                         agentName: agent.name,
@@ -713,6 +714,7 @@ public final class AgentManager {
                         agent.messages.append(ChatMessage(role: .assistant, content: message))
                     }
                     agent.status = .idle
+                    self.clearTransientOperationStatus(for: agent)
                 }
             } catch {
                 print("[ACP] AgentManager.executeSlashCommand: background task error for command=\(command): \(error)")
@@ -720,6 +722,7 @@ public final class AgentManager {
                     guard let self = self, let agent = self.agents[agentId] else { return }
                     agent.status = .error
                     agent.errorMessage = error.localizedDescription
+                    self.clearTransientOperationStatus(for: agent)
                     agent.debugLog.append(DebugLogEntry(
                         type: "slash_command_error",
                         summary: "Slash command /\(command) failed: \(error.localizedDescription)"
@@ -1157,10 +1160,24 @@ public final class AgentManager {
         }
     }
     
+    /// Clears transient operation banners (compaction / history clearing).
+    /// These are driven by `_kiro.dev/compaction/status` and `_kiro.dev/clear/status`
+    /// notifications which only ever signal "in progress"; we treat the end of a
+    /// turn or command as the completion signal so the banners can't get stuck on
+    /// screen indefinitely.
+    private func clearTransientOperationStatus(for agent: Agent) {
+        agent.isCompacting = false
+        agent.compactionMessage = nil
+        agent.isClearingHistory = false
+        agent.clearStatusMessage = nil
+    }
+
     private func handlePromptCompletion(stopReason: StopReason, for agent: Agent) {
         // Clear active tool calls
         agent.activeToolCalls.removeAll()
         agent.thoughtContent = ""
+        // Dismiss any in-progress compaction/clear banners now that the turn ended
+        clearTransientOperationStatus(for: agent)
         
         // Update agent status and add activity event
         switch stopReason {
