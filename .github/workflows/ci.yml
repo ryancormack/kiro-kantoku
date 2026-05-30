@@ -17,4 +17,34 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.1.app
 
       - name: Run tests
-        run: swift test
+        # Xcode 26.x intermittently crashes the Swift macro plugin server while
+        # compiling (it surfaces as "Internal Error: dataCorrupted ... Corrupted
+        # JSON ... unexpected end of file" followed by "error: fatalError"). That
+        # is a known toolchain flake rather than a real test failure, so retry a
+        # bounded number of times when that exact signature appears, while still
+        # failing fast on genuine compile/test failures.
+        run: |
+          set -o pipefail
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            echo "::group::swift test (attempt $attempt/$attempts)"
+            set +e
+            swift test 2>&1 | tee test-output.log
+            status=${PIPESTATUS[0]}
+            set -e
+            echo "::endgroup::"
+
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$attempts" ] && grep -qE "Corrupted JSON|Internal Error: dataCorrupted" test-output.log; then
+              echo "::warning::Detected flaky Swift macro plugin crash (Xcode 26). Cleaning build artifacts and retrying (attempt $attempt failed)."
+              swift package clean || true
+              continue
+            fi
+
+            echo "swift test failed (exit $status); not a recognised flaky failure."
+            exit "$status"
+          done
+          exit 1
