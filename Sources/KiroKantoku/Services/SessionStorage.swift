@@ -106,7 +106,11 @@ public final class SessionStorage: Sendable {
     public let sessionsDirectory: URL
     
     /// File manager for file operations
-    private let fileManager: FileManager
+    ///
+    /// `FileManager` is not `Sendable`, but `SessionStorage` is. We only ever use
+    /// the thread-safe `FileManager.default` singleton here, so opt out of the
+    /// Sendable check explicitly rather than dropping the class's conformance.
+    private nonisolated(unsafe) let fileManager: FileManager
     
     /// Initialize with the default sessions directory (~/.kiro/sessions/cli/)
     public init() {
