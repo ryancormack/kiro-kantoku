@@ -192,13 +192,13 @@ struct DiffView: View {
         while i < lines.count {
             // Find a run of deletions followed by a run of additions
             if lines[i].type == .deletion {
-                var deletionStart = i
+                let deletionStart = i
                 while i < lines.count && lines[i].type == .deletion {
                     i += 1
                 }
                 let deletionEnd = i
 
-                var additionStart = i
+                let additionStart = i
                 while i < lines.count && lines[i].type == .addition {
                     i += 1
                 }

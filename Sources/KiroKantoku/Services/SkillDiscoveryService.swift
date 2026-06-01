@@ -3,7 +3,15 @@ import Foundation
 /// Service that discovers skills by scanning directories for SKILL.md files
 public struct SkillDiscoveryService {
 
-    public init() {}
+    /// Root directory for global (user-level) skills. Injectable so tests can
+    /// isolate discovery from the developer's real `~/.kiro/skills` directory.
+    private let globalSkillsDirectory: URL
+
+    /// - Parameter globalSkillsDirectory: Global skills root, defaulting to
+    ///   `~/.kiro/skills`. Override in tests to isolate from the real home dir.
+    public init(globalSkillsDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".kiro/skills")) {
+        self.globalSkillsDirectory = globalSkillsDirectory
+    }
 
     /// Discover skills from workspace-local and global skill directories.
     /// Workspace skills override global skills with the same name.
@@ -16,10 +24,8 @@ public struct SkillDiscoveryService {
         let workspaceSkillsDir = workspacePath.appendingPathComponent(".kiro/skills")
         let workspaceSkills = scanSkillsDirectory(workspaceSkillsDir, fileManager: fm)
 
-        // Scan global skills (~/.kiro/skills/)
-        let homeDir = fm.homeDirectoryForCurrentUser
-        let globalSkillsDir = homeDir.appendingPathComponent(".kiro/skills")
-        let globalSkills = scanSkillsDirectory(globalSkillsDir, fileManager: fm)
+        // Scan global skills (defaults to ~/.kiro/skills/, injectable for tests)
+        let globalSkills = scanSkillsDirectory(globalSkillsDirectory, fileManager: fm)
 
         // Dedup by name, workspace wins
         var skillsByName: [String: Skill] = [:]

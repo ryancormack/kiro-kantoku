@@ -106,6 +106,10 @@ public final class SessionStorage: Sendable {
     public let sessionsDirectory: URL
     
     /// File manager for file operations
+    ///
+    /// `FileManager` is not `Sendable`, but `SessionStorage` is. We only ever use
+    /// the thread-safe `FileManager.default` singleton here, so opt out of the
+    /// Sendable check explicitly rather than dropping the class's conformance.
     private nonisolated(unsafe) let fileManager: FileManager
     
     /// Initialize with the default sessions directory (~/.kiro/sessions/cli/)
@@ -419,9 +423,11 @@ public final class SessionStorage: Sendable {
         let workspaceSessions = getSessionsForWorkspace(path: workspacePath)
         print("[SessionStorage] Found \(workspaceSessions.count) sessions for workspace")
         
-        // Sort by lastModified descending (newest first)
+        // Sort by best-available last-activity date, newest first.
+        // kiro-cli records activity under `updated_at`, so prefer that and fall
+        // back to legacy `last_modified`/`created_at` via `lastActivityDate`.
         let sortedSessions = workspaceSessions.sorted { a, b in
-            (a.lastModified ?? .distantPast) > (b.lastModified ?? .distantPast)
+            (a.lastActivityDate ?? .distantPast) > (b.lastActivityDate ?? .distantPast)
         }
         
         // Filter out the session we already tried

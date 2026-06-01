@@ -102,7 +102,10 @@ final class SkillTests: XCTestCase {
         """
         try skillContent.write(to: skillDir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
 
-        let service = SkillDiscoveryService()
+        // Isolate from the real ~/.kiro/skills by pointing the global dir at an
+        // empty location, so discovery only sees the workspace skill.
+        let emptyGlobalDir = tempDir.appendingPathComponent("empty-global-skills")
+        let service = SkillDiscoveryService(globalSkillsDirectory: emptyGlobalDir)
         let skills = service.discoverSkills(workspacePath: tempDir)
         XCTAssertEqual(skills.count, 1)
         XCTAssertEqual(skills.first?.name, "test-skill")
@@ -144,7 +147,8 @@ final class SkillTests: XCTestCase {
         try "# Stack patterns".write(to: referencesDir.appendingPathComponent("stack-patterns.md"), atomically: true, encoding: .utf8)
         try "# Troubleshooting".write(to: referencesDir.appendingPathComponent("troubleshooting.md"), atomically: true, encoding: .utf8)
 
-        let service = SkillDiscoveryService()
+        let emptyGlobalDir = tempDir.appendingPathComponent("empty-global-skills")
+        let service = SkillDiscoveryService(globalSkillsDirectory: emptyGlobalDir)
         let skill = service.discoverSkills(workspacePath: tempDir).first(where: { $0.name == "cdk-deploy" })
 
         XCTAssertNotNil(skill, "expected to discover the cdk-deploy skill")
@@ -166,7 +170,8 @@ final class SkillTests: XCTestCase {
         """
         try skillContent.write(to: skillDir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
 
-        let service = SkillDiscoveryService()
+        let emptyGlobalDir = tempDir.appendingPathComponent("empty-global-skills")
+        let service = SkillDiscoveryService(globalSkillsDirectory: emptyGlobalDir)
         let skill = service.discoverSkills(workspacePath: tempDir).first(where: { $0.name == "simple" })
 
         XCTAssertNotNil(skill)
@@ -191,7 +196,8 @@ final class SkillTests: XCTestCase {
         try "".write(to: referencesDir.appendingPathComponent(".DS_Store"), atomically: true, encoding: .utf8)
         try "".write(to: nestedDir.appendingPathComponent("ignored.md"), atomically: true, encoding: .utf8)
 
-        let service = SkillDiscoveryService()
+        let emptyGlobalDir = tempDir.appendingPathComponent("empty-global-skills")
+        let service = SkillDiscoveryService(globalSkillsDirectory: emptyGlobalDir)
         let skill = service.discoverSkills(workspacePath: tempDir).first(where: { $0.name == "deep" })
 
         // Only the immediate regular file "guide.md" should be picked up.
